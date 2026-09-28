@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>QuizBoard | Online Quiz</title>
+  <style>
+    :root{font-family:Inter,Segoe UI,Arial,sans-serif;color:#17233b;background:#f4f7fb;font-synthesis:none}
+    *{box-sizing:border-box}body{margin:0}header{background:#172554;color:white;padding:24px max(24px,calc((100% - 1120px)/2));display:flex;align-items:center;justify-content:space-between;gap:20px}
+    header h1{font-size:22px;margin:0 0 5px}header p{margin:0;color:#c7d2fe;font-size:14px}.actions{display:flex;gap:10px;align-items:center}
+    button,a.button{font:inherit;border:0;border-radius:9px;padding:10px 14px;cursor:pointer;text-decoration:none;font-weight:600}.primary{background:#fff;color:#172554}.secondary{background:#304477;color:white}
+    main{max-width:1120px;margin:30px auto;padding:0 22px}.heading{display:flex;align-items:end;justify-content:space-between;margin-bottom:18px}.heading h2{font-size:20px;margin:0 0 5px}.muted{color:#72809a;font-size:13px}
+    select{border:1px solid #d9e0eb;border-radius:8px;padding:10px;background:white;color:#17233b;font:inherit;min-width:190px}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.card{background:white;border:1px solid #e5eaf2;border-radius:14px;padding:20px;box-shadow:0 5px 18px #20335a0a}.label{color:#72809a;font-size:13px}.value{font-size:30px;font-weight:700;margin-top:10px}.accent{color:#425de6}
+    .panel{background:white;border:1px solid #e5eaf2;border-radius:14px;margin-top:20px;overflow:hidden}.panel-head{padding:18px 20px;border-bottom:1px solid #edf0f5;display:flex;align-items:center;justify-content:space-between}.panel h3{margin:0;font-size:16px}.table-wrap{overflow:auto}table{width:100%;border-collapse:collapse;text-align:left}th,td{padding:14px 20px;border-bottom:1px solid #edf0f5;font-size:14px}th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#72809a}tbody tr:last-child td{border-bottom:0}.pill{display:inline-block;background:#edf2ff;color:#3449bd;padding:4px 9px;border-radius:99px;font-size:12px;font-weight:600}.empty,.error{padding:30px;text-align:center;color:#72809a}.error{color:#b42318}.status{font-size:12px;color:#72809a}footer{max-width:1120px;margin:20px auto 35px;padding:0 22px;color:#72809a;font-size:12px}
+    .form-body{padding:20px}.form-grid{display:grid;grid-template-columns:2fr 1fr;gap:14px}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}.field label,.question-card label{font-size:13px;font-weight:600;color:#46536c}.field input,.field textarea,.question-card input,.question-card select{width:100%;border:1px solid #d9e0eb;border-radius:8px;padding:10px;font:inherit;color:#17233b;background:#fff}.field textarea{min-height:68px;resize:vertical}.question-card{border:1px solid #e5eaf2;border-radius:10px;padding:16px;margin:12px 0}.question-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.question-head strong{font-size:14px}.option-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.question-settings{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}.form-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.form-message{font-size:13px}.form-message.success{color:#16804a}.form-message.error{color:#b42318;padding:0;text-align:left}
+    @media(max-width:760px){header{padding:20px;align-items:flex-start}.cards{grid-template-columns:repeat(2,1fr)}.heading{align-items:flex-start;gap:14px;flex-direction:column}.actions{flex-wrap:wrap;justify-content:flex-end}}
+    @media(max-width:440px){header{flex-direction:column}.cards{grid-template-columns:1fr 1fr}.card{padding:15px}.value{font-size:25px}}
+  </style>
+</head>
+<body>
+  <header>
+    <div><h1>QuizBoard</h1><p>Online Quiz Conducting System · Admin Dashboard</p></div>
+    <div class="actions"><button class="secondary" id="refresh">Refresh data</button><a class="button primary" href="/swagger-ui/index.html">Open Swagger API</a></div>
+  </header>
+  <main>
+    <section class="panel"><div class="panel-head"><div><h3>Create a quiz</h3><span class="status">Saved to the same database used by the API</span></div><a class="muted" href="/swagger-ui/index.html">Use Swagger instead</a></div>
+      <form id="createQuizForm" class="form-body">
+        <div class="form-grid"><div class="field"><label for="quizTitle">Quiz title *</label><input id="quizTitle" name="title" required maxlength="160" placeholder="e.g. Java Basics"></div><div class="field"><label for="duration">Duration (minutes) *</label><input id="duration" name="durationMinutes" type="number" min="1" required value="10"></div></div>
+        <div class="field"><label for="description">Description (optional)</label><textarea id="description" name="description" maxlength="1000" placeholder="Short description of the quiz"></textarea></div>
+        <div id="questionList"></div>
+        <div class="form-actions"><button type="button" class="secondary" id="addQuestion">+ Add question</button><button type="submit" class="primary">Create quiz</button><span id="formMessage" class="form-message" role="status"></span></div>
+      </form>
+    </section>
+    <div class="heading"><div><h2>Overview</h2><div class="muted">A live summary of quizzes and student attempts</div></div><select id="quizFilter" aria-label="Filter by quiz"><option value="all">All quizzes</option></select></div>
+    <section class="cards" aria-label="Dashboard totals">
+      <article class="card"><div class="label">Total quizzes</div><div class="value accent" id="quizCount">—</div></article>
+      <article class="card"><div class="label">Total attempts</div><div class="value" id="attemptCount">—</div></article>
+      <article class="card"><div class="label">Completed attempts</div><div class="value" id="completedCount">—</div></article>
+      <article class="card"><div class="label">Average score</div><div class="value" id="averageScore">—</div></article>
+    </section>
+    <section class="panel"><div class="panel-head"><h3>Quiz performance</h3><span class="status" id="lastUpdated">Loading…</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Quiz</th><th>Duration</th><th>Questions</th><th>Attempts</th><th>Completed</th><th>Average score</th></tr></thead><tbody id="quizRows"><tr><td colspan="6" class="empty">Loading dashboard data…</td></tr></tbody></table></div>
+    </section>
+    <section class="panel"><div class="panel-head"><h3>Recent student attempts</h3><span class="status">Newest first</span></div>
+      <div class="table-wrap"><table><thead><tr><th>Student</th><th>Quiz</th><th>Started</th><th>Status</th><th>Score</th></tr></thead><tbody id="attemptRows"><tr><td colspan="5" class="empty">Loading attempts…</td></tr></tbody></table></div>
+    </section>
+  </main>
+  <footer>Dashboard data is loaded from this application’s quiz and result APIs.</footer>
+  <script>
+    const $ = id => document.getElementById(id);
+    let dashboard = [];
+    let questionNumber = 0;
+    const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    function addQuestion(){
+      const number=++questionNumber, card=document.createElement('div'); card.className='question-card'; card.dataset.question=number;
+      card.innerHTML=`<div class="question-head"><strong>Question ${number}</strong>${number>1?'<button type="button" class="secondary remove-question">Remove</button>':''}</div><div class="field"><label>Question text *</label><input class="question-text" required maxlength="1500" placeholder="Enter the question"></div><div class="option-grid">${[0,1,2,3].map(i=>`<div class="field"><label>Option ${i+1} *</label><input class="question-option" required maxlength="500" placeholder="Option ${i+1}"></div>`).join('')}</div><div class="question-settings"><div class="field"><label>Correct answer *</label><select class="correct-index"><option value="0">Option 1</option><option value="1">Option 2</option><option value="2">Option 3</option><option value="3">Option 4</option></select></div><div class="field"><label>Points *</label><input class="question-points" type="number" min="1" required value="1"></div></div>`;
+      $('questionList').append(card); card.querySelector('.remove-question')?.addEventListener('click',()=>{card.remove();[...$('questionList').children].forEach((item,index)=>item.querySelector('.question-head strong').textContent=`Question ${index+1}`);});
+    }
+    const pct = items => items.length ? `${Math.round(items.reduce((sum,a)=>sum+(a.totalPoints ? a.score/a.totalPoints*100 : 0),0)/items.length)}%` : '—';
+    async function loadDashboard(){
+      $('lastUpdated').textContent='Loading…';
+      try{
+        const response=await fetch('/api/quizzes'); if(!response.ok) throw new Error(`Quiz list returned HTTP ${response.status}`);
+        const quizzes=await response.json();
+        dashboard=await Promise.all(quizzes.map(async quiz=>{
+          const result=await fetch(`/api/quizzes/${quiz.id}/results`);
+          if(!result.ok) throw new Error(`Could not load results for “${quiz.title}” (HTTP ${result.status})`);
+          return {quiz,attempts:await result.json()};
+        }));
+        const select=$('quizFilter'), old=select.value;
+        select.innerHTML='<option value="all">All quizzes</option>'+dashboard.map(({quiz})=>`<option value="${quiz.id}">${esc(quiz.title)}</option>`).join('');
+        if([...select.options].some(option=>option.value===old))select.value=old;
+        render(); $('lastUpdated').textContent=`Updated ${new Date().toLocaleTimeString()}`;
+      }catch(error){$('lastUpdated').textContent='Could not load';$('quizRows').innerHTML=`<tr><td colspan="6" class="error">${esc(error.message)}. Make sure the API is running, then refresh.</td></tr>`;$('attemptRows').innerHTML='<tr><td colspan="5" class="empty">Attempt data is unavailable.</td></tr>';}
+    }
+    function render(){
+      const chosen=$('quizFilter').value;
+      const visible=chosen==='all'?dashboard:dashboard.filter(item=>String(item.quiz.id)===chosen);
+      const attempts=visible.flatMap(item=>item.attempts.map(a=>({...a,quizTitle:item.quiz.title}))).sort((a,b)=>new Date(b.startedAt)-new Date(a.startedAt));
+      const completed=attempts.filter(a=>a.submittedAt);
+      $('quizCount').textContent=chosen==='all'?dashboard.length:visible.length;
+      $('attemptCount').textContent=attempts.length;
+      $('completedCount').textContent=completed.length;
+      $('averageScore').textContent=pct(completed);
+      $('quizRows').innerHTML=visible.length?visible.map(({quiz,attempts:list})=>`<tr><td><strong>${esc(quiz.title)}</strong></td><td>${esc(quiz.durationMinutes)} min</td><td>${quiz.questions?.length??0}</td><td>${list.length}</td><td>${list.filter(a=>a.submittedAt).length}</td><td>${pct(list.filter(a=>a.submittedAt))}</td></tr>`).join(''):'<tr><td colspan="6" class="empty">No quizzes found. Create one using Swagger.</td></tr>';
+      $('attemptRows').innerHTML=attempts.length?attempts.slice(0,10).map(a=>`<tr><td>${esc(a.studentName)}</td><td>${esc(a.quizTitle)}</td><td>${a.startedAt?new Date(a.startedAt).toLocaleString():'—'}</td><td><span class="pill">${a.submittedAt?'Completed':'In progress'}</span></td><td>${a.submittedAt?`${a.score} / ${a.totalPoints}`:'—'}</td></tr>`).join(''):'<tr><td colspan="5" class="empty">No attempts yet.</td></tr>';
+    }
+    $('createQuizForm').addEventListener('submit',async event=>{
+      event.preventDefault();const message=$('formMessage');message.className='form-message';message.textContent='Saving…';
+      const body={title:$('quizTitle').value.trim(),description:$('description').value.trim()||null,durationMinutes:Number($('duration').value),questions:[...$('questionList').querySelectorAll('.question-card')].map(card=>({text:card.querySelector('.question-text').value.trim(),options:[...card.querySelectorAll('.question-option')].map(input=>input.value.trim()),correctOptionIndex:Number(card.querySelector('.correct-index').value),points:Number(card.querySelector('.question-points').value)}))};
+      try{const response=await fetch('/api/quizzes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||`Request failed (HTTP ${response.status})`);message.className='form-message success';message.textContent=`Quiz “${result.title}” created (ID ${result.id}). It is saved in MySQL.`;$('createQuizForm').reset();$('duration').value=10;$('questionList').replaceChildren();questionNumber=0;addQuestion();await loadDashboard();}catch(error){message.className='form-message error';message.textContent=`Could not create quiz: ${error.message}`;}
+    });
+    $('refresh').addEventListener('click',loadDashboard); $('quizFilter').addEventListener('change',render); $('addQuestion').addEventListener('click',addQuestion); addQuestion(); loadDashboard();
+  </script>
+</body>
+</html>
